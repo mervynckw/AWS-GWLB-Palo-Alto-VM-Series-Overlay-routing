@@ -11,6 +11,7 @@ WebOnlyVPC.yaml will create a APP VPC with a simple HTTP Webserver instance to t
 Please note that this template only support AWS us-east-1 region. If you want to launch this CFT in other AWS region, you need to change AMI ID of the VM-series according to the region(See:https://docs.paloaltonetworks.com/vm-series/11-0/vm-series-deployment/set-up-the-vm-series-firewall-on-aws/deploy-the-vm-series-firewall-on-aws/obtain-the-ami/get-amazon-machine-image-ids)
 
 Diagram
+![image](https://user-images.githubusercontent.com/22727679/208853498-8d8966a7-b9b2-472b-a91a-5cc8a2e70d00.png)
 
 Prerequsite:
 
