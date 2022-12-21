@@ -40,11 +40,18 @@ Please see detailed steps from [Palo Alto Network offical Guide](https://docs.pa
 
 
 ## Instruction
-1. Launch SecurityVPC Teamplate via AWS console, fill in parameters such as stack name and EC2 Keypair, S3 bucket for VM-Series bootstrap.
+1. Launch SecurityVPC Teamplate via AWS console, fill in parameters such as Stack Name and EC2 Keypair, S3 bucket name for VM-Series bootstrap files.
+
 2. Wait Until SecurityVPC Stack is Fully created, you should see VM-Series Managemnt URL and GWLB serviceid information in the output seciton of the stack.
-3. Try connect to VM-Series Managment URL and login with username (admin) and password (Pal0Alto!)
-4. Verify the Firewall is configured correctly, if bootstrap is successful. The firewall should be ready with overlay-routing configured.See [Here]( https://docs.paloaltonetworks.com/vm-series/10-1/vm-series-deployment/set-up-the-vm-series-firewall-on-aws/vm-series-integration-with-gateway-load-balancer/integrate-the-vm-series-with-an-aws-gateway-load-balancer/enable-overlay-routing-for-the-vm-series-on-aws) for Steps to enable Overlay-routing in AWS.
+
+3. Try connect to VM-Series Managment URL and login with username (admin) and password (Pal0Alto!) , please note that the firewall might still in bootstrap process even if the CFT stack is already shown as completed. Wait for few minutes if firewall is not yet ready.
+
+4. Verify the Firewall is configured correctly. If bootstrap is successful, the firewall should be ready with overlay-routing configured. For reference, steps to enable Overlay-routing in AWS can be found [Here]( https://docs.paloaltonetworks.com/vm-series/10-1/vm-series-deployment/set-up-the-vm-series-firewall-on-aws/vm-series-integration-with-gateway-load-balancer/integrate-the-vm-series-with-an-aws-gateway-load-balancer/enable-overlay-routing-for-the-vm-series-on-aws).
+
 5. Launch WebOnlyVPC Teamplate  via AWS Console, fill in parameters SecurityStackName with the stack name of SecurityVPC. This parameter will let the CFT to read the GWLBServiceID from the SecurityVPC and create GWLB endpoint in the WebOnlyVPC.
+
 6. After the WebOnlyVPC is created successfully, you can now try to test traffic to and from the Webserver instance.
+
 To test inbound traffic, simple locate the IP address in Output section in WebOnlyVPC and connect with http://<Web Server IP>. If connection is sucessful, you will see the page reposnse with "Hello World from ip-xxxx.ec2.internal". This mean HTTP Web service is up and responsive.
+
 To test outbound traffic from the Webserver. The AWS Session Manager is already enabled during stack creation, therefore you can remote access the instance via aws console. Browse to EC2 page, then right-click the Webserver instance, Click "Connect" then Click "Connect" in the Session mananager tab. Then you can try to ping 8.8.8.8 from the instance to verify the instance is able to ping to internet via the Firewall. You should also see traffic log in the Firewall.
