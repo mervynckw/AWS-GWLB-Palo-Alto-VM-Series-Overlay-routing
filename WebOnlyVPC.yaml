@@ -1,0 +1,362 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  This CFT will create 1x Simple Web Server in 1 AZ in a vpc for testing application traffic. 
+  
+Parameters:
+  ServerKeyName:
+    Description: >-
+      Name of an existing EC2 KeyPair to enable SSH access to the FW instance (Important: You MUST have its private key)
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    Default: AWS-lab #Create a EC2 keypair before create firewall stack.
+  SecurityStackName:
+     Description: >-
+        Name of an active CloudFormation stack that contains the Security Firewall resources, GWLBServiceId will be used in this stack.
+     Type: String
+     MinLength: 1
+     MaxLength: 255
+     AllowedPattern: "^[a-zA-Z][-a-zA-Z0-9]*$"
+     Default: SecurityVPCStack
+  TGWID:
+    Description: >-
+      Enter Transit Gateway ID to in the format tgw-0a1b2c3d4e5f6a7b8 or leave blank if you chose not to attach to a Transit Gateway. You will need to ammend this attachment after connection to enable Appliance Mode.
+    Type: String
+    AllowedPattern: tgw-\w{1,30}|^$
+    ConstraintDescription: Must be a valid TGW ID (e.g. tgw-0a983c84cfca39f4c) or left blank for No TGW Attachment
+
+# ======================================================================================================================
+#   Conditions
+# ======================================================================================================================
+
+Conditions:
+  CreateAttachmentToTGW: !Not [!Equals [!Ref TGWID, ""]]
+  
+# ======================================================================================================================
+#   Resources
+# ======================================================================================================================  
+  
+Resources:
+  AppVPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 10.0.1.0/24
+      InstanceTenancy: default
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+        - Key: Name
+          Value: APP-VPC
+
+  AwsPublicSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: 10.0.1.0/28
+      VpcId: !Ref AppVPC
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags:
+        - Key: Name
+          Value: Public-Subnet
+    DependsOn: AppVPC
+
+  AwsWebSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: 10.0.1.16/28
+      AvailabilityZone: !GetAtt 
+        - AwsPublicSubnet
+        - AvailabilityZone
+      VpcId: !Ref AppVPC
+      Tags:
+        - Key: Name
+          Value: Web-Subnet
+      MapPublicIpOnLaunch: true
+    DependsOn:
+      - AppVPC
+      - AwsPublicSubnet
+
+  AppVPCIGW:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: AppVPCIGW
+          
+  NetworkAcl1:
+    Type: 'AWS::EC2::NetworkAcl'
+    Properties:
+      VpcId: !Ref AppVPC
+      
+  aclentry1:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: 'true'
+      Protocol: '-1'
+      RuleAction: allow
+      RuleNumber: '100'
+      NetworkAclId: !Ref NetworkAcl1
+  aclentry2:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Protocol: '-1'
+      RuleAction: allow
+      RuleNumber: '100'
+      NetworkAclId: !Ref NetworkAcl1
+      
+  subnetacl1:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl1
+      SubnetId: !Ref AwsPublicSubnet
+
+  subnetacl2:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl1
+      SubnetId: !Ref AwsWebSubnet
+  
+
+      
+  rtbWebSub:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref AppVPC
+      Tags:
+        - Key: Name
+          Value: Web-RouteTable
+ 
+  rtbPubSub:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref AppVPC
+      Tags:
+        - Key: Name
+          Value: Pub-RouteTable
+
+  sgWideOpen:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Wide open security group
+      VpcId: !Ref AppVPC
+      Tags:
+        - Key: Name
+          Value: Lab External SG
+      SecurityGroupIngress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+          
+          
+  IGWAttchement1:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref AppVPC
+      InternetGatewayId: !Ref AppVPCIGW
+    DependsOn:
+      - AppVPCIGW    
+      
+  IGWRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref AppVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-ingress" 
+          
+  EdgeAssociation:
+    Type: AWS::EC2::GatewayRouteTableAssociation
+    Properties: 
+      GatewayId: !Ref AppVPCIGW
+      RouteTableId: !Ref IGWRouteTable
+      
+  subnetroute1:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref rtbWebSub
+      SubnetId: !Ref AwsWebSubnet
+      
+  subnetroute2:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref rtbPubSub
+      SubnetId: !Ref AwsPublicSubnet
+      
+  PublicRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref rtbPubSub
+      GatewayId: !Ref AppVPCIGW
+    DependsOn: IGWAttchement1
+    
+  WebRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref rtbWebSub
+      VpcEndpointId: !Ref GWLBEndpoint
+    DependsOn:
+      - GWLBEndpoint  
+     
+  IngressRoute:
+    Type: 'AWS::EC2::Route'
+    Properties: 
+      DestinationCidrBlock: "10.0.1.16/28"
+      RouteTableId: !Ref IGWRouteTable
+      VpcEndpointId: !Ref GWLBEndpoint 
+    DependsOn:
+      - GWLBEndpoint
+      
+# ----------------------------------------------------------------------------------------------------------------------
+# Web Server Role for SSM
+# ----------------------------------------------------------------------------------------------------------------------
+
+ 
+  WebServerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'    
+      Description: Role to provide access to SSM service.
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+  WebInstanceProfile: 
+    Type: "AWS::IAM::InstanceProfile"
+    Properties: 
+      InstanceProfileName: demo-web-instance-profile
+      Path: /
+      Roles: 
+        - !Ref WebServerRole
+        
+# ----------------------------------------------------------------------------------------------------------------------
+# Web Server Instance
+# ----------------------------------------------------------------------------------------------------------------------
+        
+        
+  WebInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      DisableApiTermination: 'false'
+      InstanceInitiatedShutdownBehavior: stop
+      IamInstanceProfile: !Ref WebInstanceProfile
+      ImageId: "ami-0b0dcb5067f052a63"
+      InstanceType: t2.micro
+      KeyName: !Ref ServerKeyName
+      Monitoring: 'false'
+      Tags:
+        - Key: Name
+          Value: Web Server
+      NetworkInterfaces:
+        - DeleteOnTermination: 'true'
+          Description: Primary network interface
+          DeviceIndex: 0
+          SubnetId: !Ref AwsWebSubnet
+          GroupSet:
+            - !Ref sgWideOpen
+      UserData:
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash
+            exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+            while ! ping -c 3 google.com ; do sleep 10 ; done ; #wait until firewall is up for outbound connection
+            yum update -y
+            yum install -y httpd.x86_64
+            systemctl start httpd.service
+            systemctl enable httpd.service
+            echo "Hello World from $(hostname -f)" > /var/www/html/index.html
+            
+            
+    DependsOn:
+      - AwsWebSubnet
+      - sgWideOpen
+      - WebInstanceProfile
+      
+
+      
+# ----------------------------------------------------------------------------------------------------------------------
+# VPC Endpoint for SSM Service ( Enable SSM remote session)
+# ----------------------------------------------------------------------------------------------------------------------     
+  SSMEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref sgWideOpen
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssm
+      SubnetIds:
+        - !Ref AwsWebSubnet
+      VpcEndpointType: Interface
+      VpcId: !Ref AppVPC
+
+  EC2MessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref sgWideOpen
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ec2messages
+      SubnetIds:
+        - !Ref AwsWebSubnet
+      VpcEndpointType: Interface
+      VpcId: !Ref AppVPC
+        
+  SSMMessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref sgWideOpen
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssmmessages
+      SubnetIds:
+        - !Ref AwsWebSubnet
+      VpcEndpointType: Interface
+      VpcId: !Ref AppVPC
+      
+# ----------------------------------------------------------------------------------------------------------------------
+# VPC Endpoint for GWLB ( Forward Inbound & Outbound traffic to GWLB)
+# ----------------------------------------------------------------------------------------------------------------------     
+  GWLBEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref AppVPC
+      ServiceName: 
+        Fn::ImportValue:
+            Fn::Sub: "${SecurityStackName}-GWLBServiceID"
+      VpcEndpointType: GatewayLoadBalancer
+      SubnetIds:  
+        - !Ref AwsPublicSubnet
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Transit Gateway and Attachment to Application VPC
+# ----------------------------------------------------------------------------------------------------------------------
+
+  TGWSecurityAttachment:
+    Type: AWS::EC2::TransitGatewayAttachment
+    Condition: CreateAttachmentToTGW
+    Properties:
+      VpcId: !Ref AppVPC
+      SubnetIds: [!Ref AwsWebSubnet]
+      TransitGatewayId: !Ref TGWID
+      Tags:
+        - Key: Name
+          Value: !Join [ '-' , [ !Ref "AWS::StackName", 'AppVPC'] ]
+          
+          
+
+
+
+Outputs:
+  WebServerPublicIP: 
+    Description: WebServer Public IP
+    Value: !GetAtt WebInstance.PublicIp
