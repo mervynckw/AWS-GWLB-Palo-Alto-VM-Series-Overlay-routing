@@ -36,7 +36,7 @@ By default, it will be using PANOS 10.2.3 BYOL ami image to keep the cost as low
 If you wanted to try out Palo Alto Firewall Security subscription during the test,
 You can change the AMI ID for other licenses.
 To get the AMI ID for other licenses such as Bundle 1, 2,
-Please see detailed steps from [Palo Alto Network offical Guide](https://docs.paloaltonetworks.com/vm-series/11-0/vm-series-deployment/set-up-the-vm-series-firewall-on-aws/deploy-the-vm-series-firewall-on-aws/obtain-the-ami/get-amazon-machine-image-ids)
+Please see detailed steps from [Palo Alto Network official Guide](https://docs.paloaltonetworks.com/vm-series/11-0/vm-series-deployment/set-up-the-vm-series-firewall-on-aws/deploy-the-vm-series-firewall-on-aws/obtain-the-ami/get-amazon-machine-image-ids)
 
 
 ## Instruction
@@ -52,6 +52,6 @@ Please see detailed steps from [Palo Alto Network offical Guide](https://docs.pa
 
 6. After the WebOnlyVPC is created successfully, you can now try to test traffic to and from the Webserver instance.
 
-To test inbound traffic, simple locate the IP address in Output section in WebOnlyVPC and connect with http://<Web Server IP>. If connection is sucessful, you will see the page reposnse with "Hello World from ip-xxxx.ec2.internal". This mean HTTP Web service is up and responsive.
-
-To test outbound traffic from the Webserver. The AWS Session Manager is already enabled during stack creation, therefore you can remote access the instance via aws console. Browse to EC2 page, then right-click the Webserver instance, Click "Connect" then Click "Connect" in the Session mananager tab. Then you can try to ping 8.8.8.8 from the instance to verify the instance is able to ping to internet via the Firewall. You should also see traffic log in the Firewall.
+  To test inbound traffic, simple locate the IP address in Output section in WebOnlyVPC and connect with http://<Web Server IP>. If connection is sucessful, you will     see the page reposnse with "Hello World from ip-xxxx.ec2.internal". This mean HTTP Web service is up and responsive.
+  
+  To test outbound traffic from the Webserver. The AWS Session Manager is already enabled during stack creation, therefore you can remote access the instance via aws     console. Browse to EC2 page, then right-click the Webserver instance, Click "Connect" then Click "Connect" in the Session mananager tab. Then you can try to ping       8.8.8.8 from the instance to verify the instance is able to ping to internet via the Firewall. You should also see traffic log in the Firewall.
