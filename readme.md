@@ -1,4 +1,4 @@
-##Background
+## Background
 <p dir="auto">This CFT is modified from Palo Alto Network official GitHub repo (Credit: <a href="https://github.com/PaloAltoNetworks/AWS-GWLB-VMSeries/tree/main/CFT_2_Firewalls">https://github.com/PaloAltoNetworks/AWS-GWLB-VMSeries/tree/main/CFT_2_Firewalls</a>) which is a CFT that provide easy deployment to integrate with AWS GWLB, I used it as the base and make several modifications so it can be used to demonstrate an overlay-routing deployment.</p>
 <p dir="auto">This Cloud Formation Template (CFT) only serve to demonstrate using Palo Alto Network VM-Series Firewall to control Ingress and Egress traffic in AWS Environment, with the integration support of AWS Gateway Load Balancer(GWLB) and Overlay-routing capabilities of Palo Alto VM-Series.</p>
 <p dir="auto">SecurityVPC.yaml
