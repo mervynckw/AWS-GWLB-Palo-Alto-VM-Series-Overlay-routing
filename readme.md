@@ -49,6 +49,6 @@ Please see detailed steps from <a href="https://docs.paloaltonetworks.com/vm-ser
 <p dir="auto">After the WebOnlyVPC is created successfully, you can now try to test traffic to and from the Webserver instance.</p>
 </li>
 </ol>
-<p dir="auto">To test inbound traffic, simple locate the IP address in Output section in WebOnlyVPC and connect with http://. If connection is successful, you will     see the page response with "Hello World from ip-xxxx.ec2.internal". This mean HTTP Web service is up and responsive.</p>
+<p dir="auto">To test inbound traffic, simple locate the IP address in Output section in WebOnlyVPC and connect with http://<WebServer IP>. If connection is successful, you will see the page response with "Hello World from ip-xxxx.ec2.internal". This mean HTTP Web service is up and responsive. You should also see traffic logs in the firewall managment portal.</p>
 <p dir="auto">To test outbound traffic from the Webserver. The AWS Session Manager is already enabled during stack creation, therefore you can remote access the instance via aws console. Browse to EC2 page, then right-click the Webserver instance, click "Connect" then Click "Connect" in the Session manager tab. Then you can try to ping       8.8.8.8 from the instance to verify the instance is able to ping to internet via the Firewall. You should also see traffic log in the Firewall.</p>
 </article>
